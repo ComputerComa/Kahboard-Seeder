@@ -2,6 +2,7 @@ import * as p from "@clack/prompts";
 import { applyPlan, ApplyError } from "./applyPlan.js";
 import { loadConfig } from "./config.js";
 import { pickYaml } from "./filePicker.js";
+import { createDefinitionInteractively } from "./guidedBuilder.js";
 import { hashFile } from "./hashFile.js";
 import { Kanboard } from "./kanboard.js";
 import type { KanboardApi, KanboardUser } from "./kanboard.js";
@@ -12,7 +13,7 @@ import type { Plan } from "./planner.js";
 async function main(): Promise<void> {
     p.intro("Kanboard Project Seeder");
 
-    const selectedFile = await pickYaml("./defs");
+    const selectedFile = await chooseDefinitionFile("./defs");
     if (selectedFile === null) {
         p.outro("No definition selected");
         return;
@@ -82,6 +83,26 @@ main().catch(error => {
     p.outro("Seeder stopped");
     process.exitCode = 1;
 });
+
+async function chooseDefinitionFile(definitionsFolder: string): Promise<string | null> {
+    const mode = await p.select({
+        message: "How do you want to start?",
+        options: [
+            { value: "load", label: "Load YAML definition" },
+            { value: "create", label: "Create YAML interactively" },
+        ],
+        initialValue: "load",
+    });
+
+    if (p.isCancel(mode) || typeof mode !== "string") {
+        p.cancel("No mode selected");
+        return null;
+    }
+
+    return mode === "create"
+        ? createDefinitionInteractively(definitionsFolder)
+        : pickYaml(definitionsFolder);
+}
 
 async function buildPlanWithAssigneePrompts(
     kanboard: KanboardApi,

@@ -1,0 +1,18 @@
+<div class="panel warning">
+    <h3>Assignee Mapping Required</h3>
+    <p>The definition is valid, but one or more YAML assignees do not exist in Kanboard.</p>
+    <form hx-post="/plan" hx-target="#workflow" hx-swap="innerHTML">
+        <input type="hidden" name="definitionPath" value="<%= definitionPath %>">
+        <% for (const missing of missingAssignees) { %>
+            <label>
+                <span><code><%= missing.username %></code> used by <%= missing.taskReferences.join(", ") %></span>
+                <select name="assignee:<%= missing.username %>" required>
+                    <% for (const user of users) { %>
+                        <option value="<%= user.id %>"><%= user.name ? `${user.username} (${user.name})` : user.username %></option>
+                    <% } %>
+                </select>
+            </label>
+        <% } %>
+        <button type="submit">Replan With Mapping</button>
+    </form>
+</div>

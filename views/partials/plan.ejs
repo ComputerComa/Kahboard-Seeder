@@ -1,0 +1,32 @@
+<div class="panel">
+    <h3><%= manifest.project.name %></h3>
+    <dl class="summary">
+        <div>
+            <dt>Identifier</dt>
+            <dd><%= manifest.project.identifier %></dd>
+        </div>
+        <div>
+            <dt>Columns</dt>
+            <dd><%= manifest.columns.length %></dd>
+        </div>
+        <div>
+            <dt>Tasks</dt>
+            <dd><%= manifest.tasks.length %></dd>
+        </div>
+    </dl>
+
+    <% if (actionCount === 0) { %>
+        <p class="alert success">The project already matches the definition.</p>
+    <% } else { %>
+        <h4>Proposed Changes</h4>
+        <ol class="changes">
+            <% for (const action of actions) { %>
+                <li><%= action %></li>
+            <% } %>
+        </ol>
+        <form hx-post="/apply" hx-target="#workflow" hx-swap="innerHTML" hx-confirm="Apply <%= actionCount %> planned changes?">
+            <input type="hidden" name="planId" value="<%= planId %>">
+            <button type="submit">Apply <%= actionCount %> Changes</button>
+        </form>
+    <% } %>
+</div>

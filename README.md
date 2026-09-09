@@ -38,11 +38,22 @@ idempotent plan containing the remaining work.
 
 ```bash
 npm run dev
+npm run dev:web
 npm run typecheck
 npm test
 npm run build
 npm start
+npm run start:web
 ```
+
+At startup, choose whether to load an existing YAML definition or create one
+interactively. Guided creation walks through project metadata, phases, tasks,
+dependencies, and subtasks, then writes a validated YAML file under `defs/`.
+
+The web app provides the same validate, plan, approve, and apply workflow from
+a small Express/EJS/HTMX interface. Browser sessions use a signed HTTP-only
+cookie after login, and HTTP Basic auth is also accepted. Configure
+`WEB_USERNAME`, `WEB_PASSWORD`, `WEB_JWT_SECRET`, and `WEB_PORT` in `.env`.
 
 Definitions belong in `defs/` and may use `.yaml` or `.yml`.
 The optional task `assignee` field overrides the owner for that task. When it
