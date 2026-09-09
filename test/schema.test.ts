@@ -18,3 +18,23 @@ test("rejects dependency cycles", () => {
         assert.match(result.error.issues.map(issue => issue.message).join("\n"), /cycle/i);
     }
 });
+
+test("rejects duplicate column aliases", () => {
+    assert.throws(
+        () => ProjectSchema.parse({
+            version: 1,
+            project: {
+                identifier: "TESTBOARD",
+                name: "Test board",
+            },
+            columns: ["In Progress", "Work in progress"],
+            tasks: [{
+                id: "first-task",
+                reference: "TEST-001",
+                title: "First task",
+                column: "In Progress",
+            }],
+        }),
+        /Project columns must be unique, including aliases/,
+    );
+});

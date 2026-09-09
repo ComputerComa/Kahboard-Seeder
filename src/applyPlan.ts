@@ -3,6 +3,7 @@ import type { KanboardApi } from "./kanboard.js";
 import { toKanboardId } from "./kanboard.js";
 import type { Plan, PlanAction } from "./planner.js";
 import { describeAction } from "./planner.js";
+import { findColumnId } from "./columns.js";
 
 interface ApplyContext {
     projectId: number | null;
@@ -48,14 +49,18 @@ async function executeAction(
             return `Created project ${plan.manifest.project.identifier}`;
         }
         case "ensure-column": {
-            if (context.columnIds.has(action.title)) return `Reused column ${action.title}`;
+            const existingColumnId = findColumnId(context.columnIds, action.title);
+            if (existingColumnId !== undefined) {
+                context.columnIds.set(action.title, existingColumnId);
+                return `Reused column ${action.title}`;
+            }
             const id = await kanboard.addColumn(requireProjectId(context), action.title);
             context.columnIds.set(action.title, id);
             return `Created column ${action.title}`;
         }
         case "create-task": {
             const task = requireTaskDefinition(plan, action.taskKey);
-            const columnId = context.columnIds.get(task.column);
+            const columnId = findColumnId(context.columnIds, task.column);
             if (columnId === undefined) throw new Error(`Column \"${task.column}\" has no resolved ID`);
             const id = await kanboard.createTask({
                 projectId: requireProjectId(context),
@@ -90,7 +95,7 @@ async function executeAction(
             const task = requireTaskDefinition(plan, action.taskKey);
             const projectId = requireProjectId(context);
             const taskId = requireTaskId(context, action.taskKey);
-            const columnId = context.columnIds.get(action.column);
+            const columnId = findColumnId(context.columnIds, action.column);
             if (columnId === undefined) throw new Error(`Column \"${action.column}\" has no resolved ID`);
 
             const current = await kanboard.getTaskByReference(projectId, task.reference);

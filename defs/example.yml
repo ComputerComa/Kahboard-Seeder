@@ -8,7 +8,7 @@ project:
 columns:
   - Backlog
   - Ready
-  - In Progress
+  - Work in progress
   - Waiting
   - Done
 

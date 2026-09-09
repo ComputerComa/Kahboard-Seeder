@@ -1,6 +1,7 @@
 import type { KanboardApi, KanboardTask } from "./kanboard.js";
 import { toKanboardId } from "./kanboard.js";
 import type { ProjectDefinition } from "./schema.js";
+import { findColumnId } from "./columns.js";
 
 export type PlanAction =
     | { type: "create-project" }
@@ -53,7 +54,7 @@ export async function buildPlan(
     }
 
     for (const title of manifest.columns) {
-        if (projectId === null || !columnIds.has(title)) {
+        if (projectId === null || findColumnId(columnIds, title) === undefined) {
             actions.push({ type: "ensure-column", title });
         }
     }
@@ -183,7 +184,7 @@ function addPositionActions(
     for (const column of manifest.columns) {
         const tasks = manifest.tasks.filter(task => task.column === column);
         if (tasks.length === 0) continue;
-        const columnId = columnIds.get(column);
+        const columnId = findColumnId(columnIds, column);
         const needsOrdering = tasks.some((task, index) => {
             const existing = existingTasks.get(task.id);
             return !existing ||

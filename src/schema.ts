@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { columnKey } from "./columns.js";
 
 const nonEmptyString = z.string().trim().min(1);
 
@@ -70,16 +71,17 @@ export const ProjectSchema = z.object({
     .strict()
     .superRefine((data, ctx) => {
         const columns = new Set(data.columns);
+        const columnKeys = new Set(data.columns.map(columnKey));
         const taskIds = new Set(data.tasks.map(task => task.id));
 
         const seenTaskIds = new Set<string>();
         const seenReferences = new Set<string>();
 
         // Validate column uniqueness.
-        if (columns.size !== data.columns.length) {
+        if (columns.size !== data.columns.length || columnKeys.size !== data.columns.length) {
             ctx.addIssue({
                 code: "custom",
-                message: "Project columns must be unique",
+                message: "Project columns must be unique, including aliases",
                 path: ["columns"],
             });
         }

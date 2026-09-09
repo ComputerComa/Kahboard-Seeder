@@ -82,11 +82,27 @@ test("identifies a missing task assignee", async () => {
     assert.equal(api.writeCalls, 0);
 });
 
+test("reuses Kanboard's default work-in-progress column for common aliases", async () => {
+    const api = new FakeKanboard({ existing: true, workInProgressColumn: true });
+    const aliasedManifest = ProjectSchema.parse({
+        ...manifest,
+        columns: ["Backlog", "In Progress", "Done"],
+        tasks: [{
+            ...manifest.tasks[0],
+            column: "In Progress",
+        }],
+    });
+    const plan = await buildPlan(api, aliasedManifest, "abc123");
+    assert.deepEqual(plan.actions, []);
+    assert.equal(api.writeCalls, 0);
+});
+
 class FakeKanboard implements KanboardApi {
     writeCalls = 0;
     constructor(private readonly options: {
         existing?: boolean;
         missingUser?: boolean;
+        workInProgressColumn?: boolean;
     } = {}) {}
 
     async getVersion(): Promise<string> { return "1.2.54"; }
@@ -100,15 +116,24 @@ class FakeKanboard implements KanboardApi {
         } : null;
     }
     async getColumns(): Promise<KanboardColumn[]> {
-        return this.options.existing ? [
+        if (!this.options.existing) return [];
+        if (this.options.workInProgressColumn) {
+            return [
+                { id: "1", title: "Backlog", position: "1" },
+                { id: "2", title: "Work in progress", position: "2" },
+                { id: "3", title: "Done", position: "3" },
+            ];
+        }
+        return [
             { id: "1", title: "Backlog", position: "1" },
             { id: "2", title: "Done", position: "2" },
-        ] : [];
+        ];
     }
     async getTaskByReference(): Promise<KanboardTask | null> {
         return this.options.existing ? {
             id: "10", title: "First task", description: "", reference: "TEST-001",
-            column_id: "1", owner_id: "2", position: "1", swimlane_id: "0",
+            column_id: this.options.workInProgressColumn ? "2" : "1",
+            owner_id: "2", position: "1", swimlane_id: "0",
         } : null;
     }
     async getSubtasks(): Promise<KanboardSubtask[]> {
