@@ -71,3 +71,4 @@ Thumbs.db
 *.sw?
 defs/*
 !defs/.gitkeep
+!defs/example.yml
