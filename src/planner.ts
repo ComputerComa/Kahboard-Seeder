@@ -1,4 +1,4 @@
-import type { KanboardApi, KanboardTask } from "./kanboard.js";
+import type { KanboardApi, KanboardTask, KanboardUser } from "./kanboard.js";
 import { toKanboardId } from "./kanboard.js";
 import type { ProjectDefinition } from "./schema.js";
 import { findColumnId } from "./columns.js";
@@ -28,6 +28,7 @@ export async function buildPlan(
     kanboard: KanboardApi,
     manifest: ProjectDefinition,
     manifestHash: string,
+    options: BuildPlanOptions = {},
 ): Promise<Plan> {
     const project = await kanboard.getProjectByIdentifier(manifest.project.identifier);
     const projectId = project ? toKanboardId(project.id, "Project ID") : null;
@@ -59,7 +60,7 @@ export async function buildPlan(
         }
     }
 
-    const { userIds, defaultAssigneeId } = await resolveAssignees(kanboard, manifest);
+    const { userIds, defaultAssigneeId } = await resolveAssignees(kanboard, manifest, options.assigneeOverrides);
 
     if (projectId !== null) {
         const resolvedTasks = await Promise.all(
@@ -123,6 +124,10 @@ export async function buildPlan(
     };
 }
 
+export interface BuildPlanOptions {
+    assigneeOverrides?: Map<string, KanboardUser>;
+}
+
 export function describeAction(action: PlanAction, manifest: ProjectDefinition): string {
     const task = "taskKey" in action
         ? manifest.tasks.find(candidate => candidate.id === action.taskKey)
@@ -145,6 +150,7 @@ export function describeAction(action: PlanAction, manifest: ProjectDefinition):
 async function resolveAssignees(
     kanboard: KanboardApi,
     manifest: ProjectDefinition,
+    assigneeOverrides = new Map<string, KanboardUser>(),
 ): Promise<{ userIds: Map<string, number>; defaultAssigneeId: number }> {
     const currentUser = await kanboard.getMe();
     if (!currentUser) {
@@ -157,19 +163,26 @@ async function resolveAssignees(
         manifest.tasks.flatMap(task => task.assignee ? [task.assignee] : []),
     )];
     const userIds = new Map<string, number>([[currentUsername, defaultAssigneeId]]);
+    const missingAssignees = new Map<string, string[]>();
     for (const username of usernames) {
         if (username === currentUsername) continue;
+        const override = assigneeOverrides.get(username);
+        if (override) {
+            userIds.set(username, toKanboardId(override.id, `User ${override.username} ID`));
+            continue;
+        }
         const user = await kanboard.getUserByName(username);
         if (!user) {
             const tasks = manifest.tasks
                 .filter(task => task.assignee === username)
-                .map(task => task.reference)
-                .join(", ");
-            throw new PlanError(
-                `Task assignee \"${username}\" does not exist in Kanboard (referenced by ${tasks})`,
-            );
+                .map(task => task.reference);
+            missingAssignees.set(username, tasks);
+            continue;
         }
         userIds.set(username, toKanboardId(user.id, `User ${username} ID`));
+    }
+    if (missingAssignees.size > 0) {
+        throw new MissingAssigneesError(missingAssignees);
     }
     return { userIds, defaultAssigneeId };
 }
@@ -208,4 +221,19 @@ export class PlanError extends Error {
         super(message);
         this.name = "PlanError";
     }
+}
+
+export class MissingAssigneesError extends PlanError {
+    constructor(public readonly missingAssignees: Map<string, string[]>) {
+        super(formatMissingAssignees(missingAssignees));
+        this.name = "MissingAssigneesError";
+    }
+}
+
+function formatMissingAssignees(missingAssignees: Map<string, string[]>): string {
+    return [...missingAssignees]
+        .map(([username, tasks]) =>
+            `Task assignee \"${username}\" does not exist in Kanboard (referenced by ${tasks.join(", ")})`
+        )
+        .join("\n");
 }

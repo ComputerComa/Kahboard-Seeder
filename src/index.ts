@@ -4,8 +4,10 @@ import { loadConfig } from "./config.js";
 import { pickYaml } from "./filePicker.js";
 import { hashFile } from "./hashFile.js";
 import { Kanboard } from "./kanboard.js";
+import type { KanboardApi, KanboardUser } from "./kanboard.js";
 import { loadManifest, ManifestError } from "./loadDef.js";
-import { buildPlan, describeAction, PlanError } from "./planner.js";
+import { buildPlan, describeAction, MissingAssigneesError, PlanError } from "./planner.js";
+import type { Plan } from "./planner.js";
 
 async function main(): Promise<void> {
     p.intro("Kanboard Project Seeder");
@@ -37,18 +39,7 @@ async function main(): Promise<void> {
         throw error;
     }
 
-    const planningSpinner = p.spinner();
-    planningSpinner.start("Inspecting the current board");
-    let plan;
-    try {
-        plan = await buildPlan(kanboard, manifest, validatedHash);
-        planningSpinner.stop(
-            `Planned ${plan.actions.length} change${plan.actions.length === 1 ? "" : "s"}`,
-        );
-    } catch (error) {
-        planningSpinner.error("Could not build the plan");
-        throw error;
-    }
+    const plan = await buildPlanWithAssigneePrompts(kanboard, manifest, validatedHash);
 
     if (plan.actions.length === 0) {
         p.outro("The project already matches the definition");
@@ -91,3 +82,75 @@ main().catch(error => {
     p.outro("Seeder stopped");
     process.exitCode = 1;
 });
+
+async function buildPlanWithAssigneePrompts(
+    kanboard: KanboardApi,
+    manifest: Awaited<ReturnType<typeof loadManifest>>,
+    validatedHash: string,
+): Promise<Plan> {
+    const assigneeOverrides = new Map<string, KanboardUser>();
+
+    while (true) {
+        const planningSpinner = p.spinner();
+        planningSpinner.start("Inspecting the current board");
+        try {
+            const plan = await buildPlan(kanboard, manifest, validatedHash, { assigneeOverrides });
+            planningSpinner.stop(
+                `Planned ${plan.actions.length} change${plan.actions.length === 1 ? "" : "s"}`,
+            );
+            return plan;
+        } catch (error) {
+            if (!(error instanceof MissingAssigneesError)) {
+                planningSpinner.error("Could not build the plan");
+                throw error;
+            }
+
+            planningSpinner.stop("Assignee mapping required");
+            const mappings = await promptForAssigneeMappings(kanboard, error);
+            if (mappings === null) {
+                p.cancel("Assignee mapping cancelled");
+                process.exitCode = 1;
+                process.exit();
+            }
+
+            for (const [missingUsername, user] of mappings) {
+                assigneeOverrides.set(missingUsername, user);
+            }
+        }
+    }
+}
+
+async function promptForAssigneeMappings(
+    kanboard: KanboardApi,
+    error: MissingAssigneesError,
+): Promise<Map<string, KanboardUser> | null> {
+    const users = await kanboard.getUsers();
+    if (users.length === 0) {
+        throw new PlanError("Kanboard did not return any available users for assignee mapping");
+    }
+
+    const usersById = new Map(users.map(user => [String(user.id), user]));
+    const mappings = new Map<string, KanboardUser>();
+
+    for (const [missingUsername, taskReferences] of error.missingAssignees) {
+        const selected = await p.select({
+            message: `Map missing assignee "${missingUsername}" used by ${taskReferences.join(", ")}`,
+            options: users.map(user => ({
+                value: String(user.id),
+                label: user.name ? `${user.username} (${user.name})` : user.username,
+            })),
+        });
+
+        if (p.isCancel(selected) || typeof selected !== "string") {
+            return null;
+        }
+
+        const user = usersById.get(selected);
+        if (!user) {
+            throw new PlanError(`Selected Kanboard user ID ${selected} was not returned by Kanboard`);
+        }
+        mappings.set(missingUsername, user);
+    }
+
+    return mappings;
+}

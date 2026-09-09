@@ -14,7 +14,7 @@ import type {
     KanboardTaskLink,
     KanboardUser,
 } from "../src/kanboard.js";
-import { buildPlan, PlanError } from "../src/planner.js";
+import { buildPlan, MissingAssigneesError, PlanError } from "../src/planner.js";
 import type { Plan } from "../src/planner.js";
 import { ProjectSchema } from "../src/schema.js";
 
@@ -75,10 +75,23 @@ test("identifies a missing task assignee", async () => {
     });
     await assert.rejects(
         buildPlan(api, withMissingAssignee, "abc123"),
-        (error: unknown) => error instanceof PlanError &&
+        (error: unknown) => error instanceof MissingAssigneesError &&
             error.message ===
                 'Task assignee "missing-user" does not exist in Kanboard (referenced by TEST-001)',
     );
+    assert.equal(api.writeCalls, 0);
+});
+
+test("uses prompted assignee mappings when YAML assignees are missing", async () => {
+    const api = new FakeKanboard({ missingUser: true });
+    const withMissingAssignee = ProjectSchema.parse({
+        ...manifest,
+        tasks: manifest.tasks.map(task => ({ ...task, assignee: "walker-yaml" })),
+    });
+    const plan = await buildPlan(api, withMissingAssignee, "abc123", {
+        assigneeOverrides: new Map([["walker-yaml", { id: "1", username: "admin" }]]),
+    });
+    assert.equal(plan.userIds.get("walker-yaml"), 1);
     assert.equal(api.writeCalls, 0);
 });
 
@@ -147,6 +160,12 @@ class FakeKanboard implements KanboardApi {
         return this.options.missingUser
             ? null
             : { id: "2", username: "walker" };
+    }
+    async getUsers(): Promise<KanboardUser[]> {
+        return [
+            { id: "1", username: "admin", name: "Administrator" },
+            { id: "2", username: "walker" },
+        ];
     }
     async getActiveSwimlanes(): Promise<KanboardSwimlane[]> {
         return [{ id: 0, name: "Default swimlane" }];

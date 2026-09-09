@@ -74,6 +74,7 @@ export interface KanboardApi {
     createTaskLink(taskId: number, oppositeTaskId: number, linkId: number): Promise<number>;
     getLinkByLabel(label: string): Promise<KanboardLinkType | null>;
     getUserByName(username: string): Promise<KanboardUser | null>;
+    getUsers(): Promise<KanboardUser[]>;
     getActiveSwimlanes(projectId: number): Promise<KanboardSwimlane[]>;
     moveTaskPosition(
         projectId: number,
@@ -208,6 +209,10 @@ export class Kanboard implements KanboardApi {
             "getUserByName",
             { username },
         ) || null;
+    }
+
+    async getUsers(): Promise<KanboardUser[]> {
+        return await this.request<KanboardUser[] | false>("getAllUsers") || [];
     }
 
     async getActiveSwimlanes(projectId: number): Promise<KanboardSwimlane[]> {
