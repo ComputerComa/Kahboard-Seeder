@@ -1,0 +1,24 @@
+{
+  "name": "kahboard-seeder",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/ComputerComa/Kahboard-Seeder#readme",
+  "bugs": {
+    "url": "https://github.com/ComputerComa/Kahboard-Seeder/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ComputerComa/Kahboard-Seeder.git"
+  },
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "inquirer": "^9.3.8",
+    "inquirer-file-tree-selection-prompt": "^2.0.5",
+    "yaml": "^2.9.0",
+    "zod": "^4.6.0"
+  }
+}
