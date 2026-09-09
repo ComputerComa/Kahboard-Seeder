@@ -149,7 +149,15 @@ async function resolveAssignees(
     const userIds = new Map<string, number>();
     for (const username of usernames) {
         const user = await kanboard.getUserByName(username);
-        if (!user) throw new PlanError(`Kanboard user \"${username}\" does not exist`);
+        if (!user) {
+            const tasks = manifest.tasks
+                .filter(task => task.assignee === username)
+                .map(task => task.reference)
+                .join(", ");
+            throw new PlanError(
+                `Task assignee \"${username}\" does not exist in Kanboard (referenced by ${tasks})`,
+            );
+        }
         userIds.set(username, toKanboardId(user.id, `User ${username} ID`));
     }
     return userIds;

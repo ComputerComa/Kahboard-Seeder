@@ -13,7 +13,7 @@ import type {
     KanboardTaskLink,
     KanboardUser,
 } from "../src/kanboard.js";
-import { buildPlan } from "../src/planner.js";
+import { buildPlan, PlanError } from "../src/planner.js";
 import { ProjectSchema } from "../src/schema.js";
 
 const manifest = ProjectSchema.parse({
@@ -55,9 +55,23 @@ test("returns an empty plan when the board already matches", async () => {
     assert.equal(api.writeCalls, 0);
 });
 
+test("identifies a missing task assignee", async () => {
+    const api = new FakeKanboard({ missingUser: true });
+    await assert.rejects(
+        buildPlan(api, manifest, "abc123"),
+        (error: unknown) => error instanceof PlanError &&
+            error.message ===
+                'Task assignee "walker" does not exist in Kanboard (referenced by TEST-001)',
+    );
+    assert.equal(api.writeCalls, 0);
+});
+
 class FakeKanboard implements KanboardApi {
     writeCalls = 0;
-    constructor(private readonly options: { existing?: boolean } = {}) {}
+    constructor(private readonly options: {
+        existing?: boolean;
+        missingUser?: boolean;
+    } = {}) {}
 
     async getVersion(): Promise<string> { return "1.2.54"; }
     async getProjectByIdentifier(): Promise<KanboardProject | null> {
@@ -86,7 +100,9 @@ class FakeKanboard implements KanboardApi {
         return { id: "3", label: "is blocked by" };
     }
     async getUserByName(): Promise<KanboardUser | null> {
-        return { id: "2", username: "walker" };
+        return this.options.missingUser
+            ? null
+            : { id: "2", username: "walker" };
     }
     async getActiveSwimlanes(): Promise<KanboardSwimlane[]> {
         return [{ id: 0, name: "Default swimlane" }];

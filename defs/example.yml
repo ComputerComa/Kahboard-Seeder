@@ -17,7 +17,6 @@ tasks:
     reference: EXAMPLE-001
     title: Prepare the project
     column: Ready
-    assignee: username
     description: |
       Gather the information and resources needed before work begins.
     due: "2026-10-01 17:00"
@@ -30,7 +29,6 @@ tasks:
     reference: EXAMPLE-002
     title: Perform the main work
     column: Backlog
-    assignee: username
     description: Complete the primary work defined by the project.
     depends_on:
       - prepare-project
