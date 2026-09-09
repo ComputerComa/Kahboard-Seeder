@@ -1,5 +1,6 @@
 import * as p from "@clack/prompts";
 import { applyPlan, ApplyError } from "./applyPlan.js";
+import { loadConfig } from "./config.js";
 import { pickYaml } from "./filePicker.js";
 import { hashFile } from "./hashFile.js";
 import { Kanboard } from "./kanboard.js";
@@ -24,11 +25,7 @@ async function main(): Promise<void> {
         `Tasks: ${manifest.tasks.length}`,
     ].join("\n"), "Definition summary");
 
-    const kanboard = new Kanboard({
-        url: requiredEnvironmentVariable("KANBOARD_URL"),
-        username: requiredEnvironmentVariable("KANBOARD_USERNAME"),
-        apiKey: requiredEnvironmentVariable("KANBOARD_API_KEY"),
-    });
+    const kanboard = new Kanboard(loadConfig());
 
     const connectionSpinner = p.spinner();
     connectionSpinner.start("Connecting to Kanboard");
@@ -82,12 +79,6 @@ async function main(): Promise<void> {
 
     const completed = await applyPlan(kanboard, plan);
     p.outro(`Applied ${completed} changes successfully`);
-}
-
-function requiredEnvironmentVariable(name: string): string {
-    const value = process.env[name];
-    if (!value) throw new Error(`Required environment variable ${name} is not set`);
-    return value;
 }
 
 main().catch(error => {

@@ -13,15 +13,14 @@ applies the changes sequentially with progress indicators.
 
 ```bash
 npm install
-export KANBOARD_URL="https://kanboard.example.com"
-export KANBOARD_USERNAME="your-username"
-export KANBOARD_API_KEY="your-personal-access-token"
+cp .env.example .env
+# Edit .env with your Kanboard URL, username, and API key.
 npm run dev
 ```
 
 `KANBOARD_URL` can be the base URL or the complete `jsonrpc.php` endpoint.
-Credentials come from the environment and must not be placed in definition
-files.
+Configuration is loaded from `.env` with `dotenv`. The `.env` file is ignored
+by Git and credentials must not be placed in definition files.
 
 ## Safety model
 
