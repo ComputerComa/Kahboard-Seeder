@@ -12,6 +12,14 @@ interface ApplyContext {
 }
 
 export async function applyPlan(kanboard: KanboardApi, plan: Plan): Promise<number> {
+    return applyPlanWithReporter(kanboard, plan, "clack");
+}
+
+export async function applyPlanWithReporter(
+    kanboard: KanboardApi,
+    plan: Plan,
+    reporter: ApplyReporter = "clack",
+): Promise<number> {
     const context: ApplyContext = {
         projectId: plan.projectId,
         columnIds: new Map(plan.columnIds),
@@ -20,18 +28,31 @@ export async function applyPlan(kanboard: KanboardApi, plan: Plan): Promise<numb
     let completed = 0;
 
     for (const action of plan.actions) {
-        const spinner = p.spinner();
         const description = describeAction(action, plan.manifest);
-        spinner.start(description);
+        const spinner = reporter === "clack" ? p.spinner() : null;
+        spinner?.start(description);
         try {
-            spinner.stop(await executeAction(kanboard, plan, context, action));
+            const result = await executeAction(kanboard, plan, context, action);
+            spinner?.stop(result);
+            if (typeof reporter === "function") reporter({ action, description, status: "success", message: result });
             completed += 1;
         } catch (error) {
-            spinner.error(`Failed: ${description}`);
+            spinner?.error(`Failed: ${description}`);
+            if (typeof reporter === "function") reporter({ action, description, status: "failed", error });
             throw new ApplyError(description, error, completed);
         }
     }
     return completed;
+}
+
+export type ApplyReporter = "clack" | ((event: ApplyEvent) => void);
+
+export interface ApplyEvent {
+    action: PlanAction;
+    description: string;
+    status: "success" | "failed";
+    message?: string;
+    error?: unknown;
 }
 
 async function executeAction(

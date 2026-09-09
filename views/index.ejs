@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kanboard Seeder</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+    <script src="/assets/htmx.min.js" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1>Kanboard Seeder</h1>
+            <p>Validate, plan, approve, and apply YAML project definitions.</p>
+        </div>
+        <form method="post" action="/logout">
+            <button type="submit" class="secondary">Sign out</button>
+        </form>
+    </header>
+
+    <main class="layout">
+        <section>
+            <h2>Definition</h2>
+            <% if (definitions.length === 0) { %>
+                <p class="alert">No YAML definitions found under <code>defs/</code>.</p>
+            <% } else { %>
+                <form hx-post="/plan" hx-target="#workflow" hx-swap="innerHTML">
+                    <label>
+                        Project definition
+                        <select name="definitionPath" required>
+                            <% for (const definition of definitions) { %>
+                                <option value="<%= definition.path %>"><%= definition.label %></option>
+                            <% } %>
+                        </select>
+                    </label>
+                    <button type="submit">Validate and Plan</button>
+                </form>
+            <% } %>
+        </section>
+
+        <section>
+            <h2>Workflow</h2>
+            <div id="workflow" class="workflow">
+                <p class="muted">Pick a definition to begin.</p>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

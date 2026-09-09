@@ -1,0 +1,8 @@
+<div class="panel success">
+    <h3>Applied <%= completed %> Changes</h3>
+    <ol class="events">
+        <% for (const event of events) { %>
+            <li class="<%= event.status %>"><%= event.message %></li>
+        <% } %>
+    </ol>
+</div>
