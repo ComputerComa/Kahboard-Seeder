@@ -44,6 +44,10 @@ npm run build
 npm start
 ```
 
+At startup, choose whether to load an existing YAML definition or create one
+interactively. Guided creation walks through project metadata, phases, tasks,
+dependencies, and subtasks, then writes a validated YAML file under `defs/`.
+
 Definitions belong in `defs/` and may use `.yaml` or `.yml`.
 The optional task `assignee` field overrides the owner for that task. When it
 is omitted, the task is assigned to the Kanboard user authenticated by the
