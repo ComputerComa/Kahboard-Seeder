@@ -177,8 +177,9 @@ class FakeKanboard implements KanboardApi {
         _columnId: number,
         _position: number,
         _swimlaneId: number,
-    ): Promise<void> {
+    ): Promise<boolean> {
         this.writeCalls += 1;
+        return true;
     }
 }
 
@@ -222,7 +223,52 @@ class NoOpPositionKanboard extends FakeKanboard {
         };
     }
 
-    override async moveTaskPosition(): Promise<void> {
+    override async moveTaskPosition(): Promise<boolean> {
         this.moveCalls += 1;
+        return true;
+    }
+}
+
+test("accepts Kanboard false move results when the task is already visually positioned", async () => {
+    const api = new FalseNoOpMoveKanboard();
+    const plan: Plan = {
+        manifest,
+        manifestHash: "abc123",
+        projectId: 1,
+        columnIds: new Map([["Backlog", 1], ["Done", 2]]),
+        taskIds: new Map([["first-task", 10]]),
+        userIds: new Map([["walker", 2]]),
+        defaultAssigneeId: 2,
+        blockedByLinkId: 3,
+        defaultSwimlaneId: 0,
+        actions: [{
+            type: "position-task",
+            taskKey: "first-task",
+            column: "Backlog",
+            position: 1,
+        }],
+    };
+
+    assert.equal(await applyPlan(api, plan), 1);
+    assert.equal(api.moveCalls, 0);
+});
+
+class FalseNoOpMoveKanboard extends NoOpPositionKanboard {
+    override async getTaskByReference(): Promise<KanboardTask | null> {
+        return {
+            id: "10",
+            title: "First task",
+            description: "",
+            reference: "TEST-001",
+            column_id: "1",
+            owner_id: "2",
+            position: "0",
+            swimlane_id: "0",
+        };
+    }
+
+    override async moveTaskPosition(): Promise<boolean> {
+        this.moveCalls += 1;
+        return false;
     }
 }

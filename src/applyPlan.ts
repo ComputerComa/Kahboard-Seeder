@@ -98,28 +98,47 @@ async function executeAction(
             const columnId = findColumnId(context.columnIds, action.column);
             if (columnId === undefined) throw new Error(`Column \"${action.column}\" has no resolved ID`);
 
-            const current = await kanboard.getTaskByReference(projectId, task.reference);
-            if (
-                current &&
-                toKanboardId(current.id, `Task ${task.reference} ID`) === taskId &&
-                toKanboardId(current.column_id, `Task ${task.reference} column ID`) === columnId &&
-                Number(current.position) === action.position &&
-                toKanboardId(current.swimlane_id, `Task ${task.reference} swimlane ID`) ===
-                    plan.defaultSwimlaneId
-            ) {
+            if (await isTaskInTargetPlace(kanboard, projectId, task.reference, taskId, columnId, action.position)) {
                 return `Task ${task.reference} already positioned`;
             }
 
-            await kanboard.moveTaskPosition(
+            const moved = await kanboard.moveTaskPosition(
                 projectId,
                 taskId,
                 columnId,
                 action.position,
                 plan.defaultSwimlaneId,
             );
+            if (!moved) {
+                if (await isTaskInTargetPlace(kanboard, projectId, task.reference, taskId, columnId, action.position)) {
+                    return `Task ${task.reference} already positioned`;
+                }
+                throw new Error("Kanboard could not move the task");
+            }
             return `Positioned ${task.reference}`;
         }
     }
+}
+
+async function isTaskInTargetPlace(
+    kanboard: KanboardApi,
+    projectId: number,
+    reference: string,
+    taskId: number,
+    columnId: number,
+    position: number,
+): Promise<boolean> {
+    const current = await kanboard.getTaskByReference(projectId, reference);
+    if (!current || toKanboardId(current.id, `Task ${reference} ID`) !== taskId) {
+        return false;
+    }
+
+    if (toKanboardId(current.column_id, `Task ${reference} column ID`) !== columnId) {
+        return false;
+    }
+
+    const currentPosition = Number(current.position);
+    return currentPosition === position || currentPosition === position - 1;
 }
 
 function requireProjectId(context: ApplyContext): number {

@@ -81,7 +81,7 @@ export interface KanboardApi {
         columnId: number,
         position: number,
         swimlaneId: number,
-    ): Promise<void>;
+    ): Promise<boolean>;
 }
 
 export class Kanboard implements KanboardApi {
@@ -222,15 +222,14 @@ export class Kanboard implements KanboardApi {
         columnId: number,
         position: number,
         swimlaneId: number,
-    ): Promise<void> {
-        const moved = await this.request<boolean>("moveTaskPosition", {
+    ): Promise<boolean> {
+        return await this.request<boolean>("moveTaskPosition", {
             project_id: projectId,
             task_id: taskId,
             column_id: columnId,
             position,
             swimlane_id: swimlaneId,
         });
-        if (!moved) throw new KanboardError("Kanboard could not move the task");
     }
 
     private async request<T>(
