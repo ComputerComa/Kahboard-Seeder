@@ -88,11 +88,26 @@ async function executeAction(
         }
         case "position-task": {
             const task = requireTaskDefinition(plan, action.taskKey);
+            const projectId = requireProjectId(context);
+            const taskId = requireTaskId(context, action.taskKey);
             const columnId = context.columnIds.get(action.column);
             if (columnId === undefined) throw new Error(`Column \"${action.column}\" has no resolved ID`);
+
+            const current = await kanboard.getTaskByReference(projectId, task.reference);
+            if (
+                current &&
+                toKanboardId(current.id, `Task ${task.reference} ID`) === taskId &&
+                toKanboardId(current.column_id, `Task ${task.reference} column ID`) === columnId &&
+                Number(current.position) === action.position &&
+                toKanboardId(current.swimlane_id, `Task ${task.reference} swimlane ID`) ===
+                    plan.defaultSwimlaneId
+            ) {
+                return `Task ${task.reference} already positioned`;
+            }
+
             await kanboard.moveTaskPosition(
-                requireProjectId(context),
-                requireTaskId(context, action.taskKey),
+                projectId,
+                taskId,
                 columnId,
                 action.position,
                 plan.defaultSwimlaneId,

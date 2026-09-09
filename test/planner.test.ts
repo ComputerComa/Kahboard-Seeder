@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { applyPlan } from "../src/applyPlan.js";
 import type {
     CreateProjectOptions,
     CreateTaskOptions,
@@ -14,6 +15,7 @@ import type {
     KanboardUser,
 } from "../src/kanboard.js";
 import { buildPlan, PlanError } from "../src/planner.js";
+import type { Plan } from "../src/planner.js";
 import { ProjectSchema } from "../src/schema.js";
 
 const manifest = ProjectSchema.parse({
@@ -152,5 +154,50 @@ class FakeKanboard implements KanboardApi {
         _swimlaneId: number,
     ): Promise<void> {
         this.writeCalls += 1;
+    }
+}
+
+test("skips a positioning call when the task is already in place", async () => {
+    const api = new NoOpPositionKanboard();
+    const plan: Plan = {
+        manifest,
+        manifestHash: "abc123",
+        projectId: 1,
+        columnIds: new Map([["Backlog", 1], ["Done", 2]]),
+        taskIds: new Map([["first-task", 10]]),
+        userIds: new Map([["walker", 2]]),
+        defaultAssigneeId: 2,
+        blockedByLinkId: 3,
+        defaultSwimlaneId: 0,
+        actions: [{
+            type: "position-task",
+            taskKey: "first-task",
+            column: "Backlog",
+            position: 1,
+        }],
+    };
+
+    assert.equal(await applyPlan(api, plan), 1);
+    assert.equal(api.moveCalls, 0);
+});
+
+class NoOpPositionKanboard extends FakeKanboard {
+    moveCalls = 0;
+
+    override async getTaskByReference(): Promise<KanboardTask | null> {
+        return {
+            id: "10",
+            title: "First task",
+            description: "",
+            reference: "TEST-001",
+            column_id: "1",
+            owner_id: "2",
+            position: "1",
+            swimlane_id: "0",
+        };
+    }
+
+    override async moveTaskPosition(): Promise<void> {
+        this.moveCalls += 1;
     }
 }
