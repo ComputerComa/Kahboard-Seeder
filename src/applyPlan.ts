@@ -64,7 +64,9 @@ async function executeAction(
                 reference: task.reference,
                 description: task.description,
                 due: task.due,
-                ownerId: task.assignee ? plan.userIds.get(task.assignee) : undefined,
+                ownerId: task.assignee
+                    ? plan.userIds.get(task.assignee)
+                    : plan.defaultAssigneeId,
             });
             context.taskIds.set(task.id, id);
             return `Created task ${task.reference}`;

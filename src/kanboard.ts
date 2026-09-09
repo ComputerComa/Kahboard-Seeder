@@ -33,7 +33,7 @@ export interface KanboardTask {
 export interface KanboardSubtask { id: string; title: string; }
 export interface KanboardTaskLink { task_id: string; label: string; }
 export interface KanboardLinkType { id: string; label: string; }
-export interface KanboardUser { id: string; username: string; name?: string | null; }
+export interface KanboardUser { id: string | number; username: string; name?: string | null; }
 export interface KanboardSwimlane { id: string | number; name: string; }
 
 export interface CreateProjectOptions {
@@ -61,6 +61,7 @@ interface JsonRpcResponse<T> {
 
 export interface KanboardApi {
     getVersion(): Promise<string>;
+    getMe(): Promise<KanboardUser | null>;
     getProjectByIdentifier(identifier: string): Promise<KanboardProject | null>;
     createProject(options: CreateProjectOptions): Promise<number>;
     getColumns(projectId: number): Promise<KanboardColumn[]>;
@@ -98,6 +99,10 @@ export class Kanboard implements KanboardApi {
 
     getVersion(): Promise<string> {
         return this.request<string>("getVersion");
+    }
+
+    async getMe(): Promise<KanboardUser | null> {
+        return await this.request<KanboardUser | false | null>("getMe") || null;
     }
 
     getProjects(): Promise<KanboardProject[]> {

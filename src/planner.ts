@@ -17,6 +17,7 @@ export interface Plan {
     columnIds: Map<string, number>;
     taskIds: Map<string, number>;
     userIds: Map<string, number>;
+    defaultAssigneeId: number;
     blockedByLinkId: number;
     defaultSwimlaneId: number;
     actions: PlanAction[];
@@ -57,7 +58,7 @@ export async function buildPlan(
         }
     }
 
-    const userIds = await resolveAssignees(kanboard, manifest);
+    const { userIds, defaultAssigneeId } = await resolveAssignees(kanboard, manifest);
 
     if (projectId !== null) {
         const resolvedTasks = await Promise.all(
@@ -114,6 +115,7 @@ export async function buildPlan(
         columnIds,
         taskIds,
         userIds,
+        defaultAssigneeId,
         blockedByLinkId,
         defaultSwimlaneId,
         actions,
@@ -142,12 +144,20 @@ export function describeAction(action: PlanAction, manifest: ProjectDefinition):
 async function resolveAssignees(
     kanboard: KanboardApi,
     manifest: ProjectDefinition,
-): Promise<Map<string, number>> {
+): Promise<{ userIds: Map<string, number>; defaultAssigneeId: number }> {
+    const currentUser = await kanboard.getMe();
+    if (!currentUser) {
+        throw new PlanError("Kanboard could not identify the authenticated user");
+    }
+
+    const defaultAssigneeId = toKanboardId(currentUser.id, "Authenticated user ID");
+    const currentUsername = currentUser.username.toLowerCase();
     const usernames = [...new Set(
         manifest.tasks.flatMap(task => task.assignee ? [task.assignee] : []),
     )];
-    const userIds = new Map<string, number>();
+    const userIds = new Map<string, number>([[currentUsername, defaultAssigneeId]]);
     for (const username of usernames) {
+        if (username === currentUsername) continue;
         const user = await kanboard.getUserByName(username);
         if (!user) {
             const tasks = manifest.tasks
@@ -160,7 +170,7 @@ async function resolveAssignees(
         }
         userIds.set(username, toKanboardId(user.id, `User ${username} ID`));
     }
-    return userIds;
+    return { userIds, defaultAssigneeId };
 }
 
 function addPositionActions(

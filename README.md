@@ -45,3 +45,6 @@ npm start
 ```
 
 Definitions belong in `defs/` and may use `.yaml` or `.yml`.
+The optional task `assignee` field overrides the owner for that task. When it
+is omitted, the task is assigned to the Kanboard user authenticated by the
+credentials in `.env`.

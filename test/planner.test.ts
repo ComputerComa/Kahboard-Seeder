@@ -55,13 +55,27 @@ test("returns an empty plan when the board already matches", async () => {
     assert.equal(api.writeCalls, 0);
 });
 
+test("uses the authenticated user as the default assignee", async () => {
+    const api = new FakeKanboard();
+    const withoutAssignee = ProjectSchema.parse({
+        ...manifest,
+        tasks: manifest.tasks.map(({ assignee: _assignee, ...task }) => task),
+    });
+    const plan = await buildPlan(api, withoutAssignee, "abc123");
+    assert.equal(plan.defaultAssigneeId, 2);
+});
+
 test("identifies a missing task assignee", async () => {
     const api = new FakeKanboard({ missingUser: true });
+    const withMissingAssignee = ProjectSchema.parse({
+        ...manifest,
+        tasks: manifest.tasks.map(task => ({ ...task, assignee: "missing-user" })),
+    });
     await assert.rejects(
-        buildPlan(api, manifest, "abc123"),
+        buildPlan(api, withMissingAssignee, "abc123"),
         (error: unknown) => error instanceof PlanError &&
             error.message ===
-                'Task assignee "walker" does not exist in Kanboard (referenced by TEST-001)',
+                'Task assignee "missing-user" does not exist in Kanboard (referenced by TEST-001)',
     );
     assert.equal(api.writeCalls, 0);
 });
@@ -74,6 +88,9 @@ class FakeKanboard implements KanboardApi {
     } = {}) {}
 
     async getVersion(): Promise<string> { return "1.2.54"; }
+    async getMe(): Promise<KanboardUser | null> {
+        return { id: "2", username: "walker" };
+    }
     async getProjectByIdentifier(): Promise<KanboardProject | null> {
         return this.options.existing ? {
             id: "1", name: "Test board", identifier: "TESTBOARD",
