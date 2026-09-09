@@ -173,6 +173,37 @@ export const ProjectSchema = z.object({
                 });
             }
         });
+
+        const tasksById = new Map(data.tasks.map(task => [task.id, task]));
+        const visiting = new Set<string>();
+        const visited = new Set<string>();
+        let cycleReported = false;
+
+        const visit = (taskId: string, trail: string[]): void => {
+            if (cycleReported || visited.has(taskId)) return;
+            if (visiting.has(taskId)) {
+                const cycleStart = trail.indexOf(taskId);
+                const cycle = [...trail.slice(cycleStart), taskId];
+                ctx.addIssue({
+                    code: "custom",
+                    message: `Dependency cycle detected: ${cycle.join(" -> ")}`,
+                    path: ["tasks"],
+                });
+                cycleReported = true;
+                return;
+            }
+
+            const task = tasksById.get(taskId);
+            if (!task) return;
+            visiting.add(taskId);
+            for (const dependency of task.depends_on) {
+                if (tasksById.has(dependency)) visit(dependency, [...trail, taskId]);
+            }
+            visiting.delete(taskId);
+            visited.add(taskId);
+        };
+
+        for (const task of data.tasks) visit(task.id, []);
     });
 
 export type ProjectDefinition =
