@@ -10,15 +10,26 @@
     "type": "git",
     "url": "git+https://github.com/ComputerComa/Kahboard-Seeder.git"
   },
-  "type": "commonjs",
-  "main": "index.js",
+  "type": "module",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx src/index.ts",
+    "dev:watch": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "start": "node dist/index.js"
   },
   "dependencies": {
-    "inquirer": "^9.3.8",
-    "inquirer-file-tree-selection-prompt": "^2.0.5",
+    "@clack/prompts": "^1.8.0",
     "yaml": "^2.9.0",
     "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }

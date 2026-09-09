@@ -70,3 +70,4 @@ Thumbs.db
 *.sln
 *.sw?
 defs/*
+!defs/.gitkeep
