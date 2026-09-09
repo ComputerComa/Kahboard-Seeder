@@ -1,0 +1,50 @@
+version: 1
+
+project:
+  identifier: EXAMPLEPROJECT
+  name: Example Project
+  description: A generic project definition demonstrating the supported fields.
+
+columns:
+  - Backlog
+  - Ready
+  - Work in progress
+  - Waiting
+  - Done
+
+tasks:
+  - id: prepare-project
+    reference: EXAMPLE-001
+    title: Prepare the project
+    column: Ready
+    description: |
+      Gather the information and resources needed before work begins.
+    due: "2026-10-01 17:00"
+    subtasks:
+      - Confirm the project scope
+      - Gather required resources
+      - Record the starting state
+
+  - id: perform-work
+    reference: EXAMPLE-002
+    title: Perform the main work
+    column: Backlog
+    description: Complete the primary work defined by the project.
+    depends_on:
+      - prepare-project
+    subtasks:
+      - Complete the first step
+      - Complete the second step
+      - Verify the result
+
+  - id: close-project
+    reference: EXAMPLE-003
+    title: Review and close the project
+    column: Backlog
+    description: Confirm the result and finish the project documentation.
+    depends_on:
+      - perform-work
+    subtasks:
+      - Perform final validation
+      - Update documentation
+      - Mark the project complete
